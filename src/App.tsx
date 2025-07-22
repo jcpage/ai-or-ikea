@@ -1,5 +1,13 @@
+import { useState, useEffect } from "react"
 
-import { useState } from "react"
+// Utility function to shuffle an array
+const shuffleArray = (array: any[]) => {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+};
 
 const rounds = [
   ["Enkla", "Viora"],
@@ -67,26 +75,35 @@ const CardContent = (props: React.HTMLAttributes<HTMLDivElement>) => (
 )
 
 export default function AIorIKEA() {
-  const [current, setCurrent] = useState(0)
-  const [score, setScore] = useState(0)
-  const [selected, setSelected] = useState<string | null>(null)
-  const [revealed, setRevealed] = useState(false)
+  const [current, setCurrent] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [shuffledRounds, setShuffledRounds] = useState<string[][]>([]);
 
-  const gameOver = current === rounds.length
+  useEffect(() => {
+    // Shuffle rounds and items within each round when the game starts
+    const shuffled = shuffleArray(
+      rounds.map((round) => shuffleArray([...round]))
+    );
+    setShuffledRounds(shuffled);
+  }, []);
 
-  const round = !gameOver ? rounds[current] : []
-  const correctAnswer = !gameOver ? round.find(name => !ikeaItems.has(name)) : null
+  const gameOver = current === shuffledRounds.length;
+
+  const round = !gameOver ? shuffledRounds[current] : [];
+  const correctAnswer = !gameOver ? round.find((name) => !ikeaItems.has(name)) : null;
 
   const handleGuess = (guess: string) => {
-    if (revealed) return
-    setSelected(guess)
-    const guessIsAI = !ikeaItems.has(guess)
-    if (guessIsAI) setScore(score + 1)
-    setRevealed(true)
-  }
+    if (revealed) return;
+    setSelected(guess);
+    const guessIsAI = !ikeaItems.has(guess);
+    if (guessIsAI) setScore(score + 1);
+    setRevealed(true);
+  };
 
   const nextRound = () => {
-    if (current < rounds.length) {
+    if (current < shuffledRounds.length) {
       setCurrent(current + 1);
       setSelected(null);
       setRevealed(false);
@@ -96,8 +113,8 @@ export default function AIorIKEA() {
   const getDescription = (name: string) => {
     return ikeaItems.has(name)
       ? ikeaDescriptions[name]
-      : aiDescriptions[name] || "AI assistant"
-  }
+      : aiDescriptions[name] || "AI assistant";
+  };
 
   return (
     <div className="max-w-xl mx-auto p-4 space-y-6 text-center">
@@ -105,15 +122,34 @@ export default function AIorIKEA() {
 
       {gameOver ? (
         <div>
-          <p className="text-xl mb-4">You scored {score} out of {rounds.length}!</p>
-          <Button onClick={() => { setCurrent(0); setScore(0) }}>Play Again</Button>
+          <p className="text-xl mb-4">
+            You scored {score} out of {shuffledRounds.length}!
+          </p>
+          <Button
+            onClick={() => {
+              setCurrent(0);
+              setScore(0);
+              setSelected(null);
+              setRevealed(false);
+              const reshuffled = shuffleArray(
+                rounds.map((round) => shuffleArray([...round]))
+              );
+              setShuffledRounds(reshuffled);
+            }}
+          >
+            Play Again
+          </Button>
         </div>
       ) : (
         <>
           <p className="text-lg">Which of these is the AI name?</p>
           <div className="grid grid-cols-2 gap-4">
             {round.map((name, i) => (
-              <Card key={i} onClick={() => handleGuess(name)} className="cursor-pointer hover:shadow-xl">
+              <Card
+                key={i}
+                onClick={() => handleGuess(name)}
+                className="cursor-pointer hover:shadow-xl"
+              >
                 <CardContent>
                   <div className="text-xl font-medium">{name}</div>
                 </CardContent>
@@ -124,21 +160,29 @@ export default function AIorIKEA() {
           {revealed && selected && (
             <div className="mt-4 text-lg">
               {selected === correctAnswer ? (
-                <p className="text-green-600 font-semibold">✅ Correct! <strong>{selected}</strong> is the AI agent: {getDescription(selected)}</p>
+                <p className="text-green-600 font-semibold">
+                  ✅ Correct! <strong>{selected}</strong> is the AI agent: {getDescription(selected)}
+                </p>
               ) : (
                 <>
-                  <p className="text-red-600 font-semibold">❌ Incorrect. <strong>{selected}</strong> is IKEA furniture: {getDescription(selected)}</p>
-                  <p className="mt-1">The AI agent was <strong>{correctAnswer}</strong>: {getDescription(correctAnswer!)}</p>
+                  <p className="text-red-600 font-semibold">
+                    ❌ Incorrect. <strong>{selected}</strong> is IKEA furniture: {getDescription(selected)}
+                  </p>
+                  <p className="mt-1">
+                    The AI agent was <strong>{correctAnswer}</strong>: {getDescription(correctAnswer!)}
+                  </p>
                 </>
               )}
             </div>
           )}
 
           {revealed && (
-            <Button onClick={nextRound} className="mt-4">Next Round</Button>
+            <Button onClick={nextRound} className="mt-4">
+              Next Round
+            </Button>
           )}
         </>
       )}
     </div>
-  )
+  );
 }
